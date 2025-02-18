@@ -12,6 +12,9 @@ __pycache__/
 pipfile
 /data
 
+*.iml
+
+
 # C extensions
 *.so
 
