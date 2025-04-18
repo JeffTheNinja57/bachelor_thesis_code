@@ -6,11 +6,12 @@ __pycache__/
 
 
 .gitignore
-
+datasets
+data
 *.iml
 
 pipfile
-/data
+cifar
 
 
 

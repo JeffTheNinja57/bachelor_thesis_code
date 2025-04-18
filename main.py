@@ -1,106 +1,98 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
+import argparse
 import os
-import ssl
-import certifi
+import torch
+import logging
+import json
+import time
 
-# ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
-
-device = torch.device("mps" if torch.mps.is_available() else "cpu")
-if device == torch.device("mps"):
-    print("Running on mps")
-
-num_epochs = 10
-batch_size = 4
-learning_rate = 0.001
-
-transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-
-test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+try:
+    from experiment.run import run_pso_experiment
+    from utils.helpers import setup_logging
+except ImportError as e:
+    print(f"ERROR: Failed to import necessary modules: {e}. Ensure project structure is correct.")
 
 
-class ConvNet(nn.Module):
-    def __init__(self):
-        super(ConvNet, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=6, kernel_size=5)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv2 = nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))  # Added proper forward pass
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+    # Define dummy placeholders if imports fail
+    def run_pso_experiment(config):
+        print(f"DUMMY: Running experiment with config: {config}")
 
 
-model = ConvNet().to(device)
+    def setup_logging(log_file, level):
+        print(f"DUMMY: Setup logging to {log_file}")
 
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-n_total_steps = len(train_loader)
-for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):
-        images = images.to(device)
-        labels = labels.to(device)
+def main():
+    parser = argparse.ArgumentParser(description="PSO-CNN Architecture Search for Action Recognition")
 
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+    # --- Paths ---
+    parser.add_argument('--data_dir', type=str, required=True,
+                        help="Directory containing the action recognition dataset.")
+    parser.add_argument('--output_dir', type=str, default="results",
+                        help="Directory to save results, logs, and models.")
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    # --- Experiment Setup ---
+    parser.add_argument('--fusion_type', type=str, required=True, choices=['early', 'late'],
+                        help="Fusion strategy to use.")
+    parser.add_argument('--device', type=str, default=None, help="Device to use ('cuda', 'cpu'). Auto-detects if None.")
+    parser.add_argument('--num_workers', type=int, default=2, help="Number of dataloader workers.")
+    parser.add_argument('--log_level', type=str, default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help="Logging level.")
 
-        if (i + 1) % 2000 == 0:
-            print('Epoch [{}/{}], Step: {}, Loss: {:.4f}'
-                  .format(epoch + 1, num_epochs, (i + 1) / n_total_steps, loss.item()))
+    # --- PSO Parameters ---
+    parser.add_argument('--swarm_size', type=int, default=20, help="Number of particles in the swarm (N).")
+    parser.add_argument('--max_iter', type=int, default=30, help="Maximum number of PSO iterations.")
+    parser.add_argument('--max_layers', type=int, default=15, help="Maximum number of functional layers (l_max).")
+    parser.add_argument('--cg', type=float, default=0.7, help="PSO parameter Cg (gBest influence probability).")
+    parser.add_argument('--k_max', type=int, default=7, help="Maximum Conv kernel size (odd number).")
+    parser.add_argument('--maps_max', type=int, default=128, help="Maximum Conv feature maps.")
+    parser.add_argument('--n_max', type=int, default=256, help="Maximum neurons in intermediate FC layers.")
 
-print('Finished Training')
+    # --- Training Parameters ---
+    parser.add_argument('--e_train', type=int, default=5, help="Epochs for particle evaluation during PSO.")
+    parser.add_argument('--e_test', type=int, default=50, help="Epochs for final training of the best model.")
+    parser.add_argument('--lr', type=float, default=0.001, help="Learning rate for Adam optimizer.")
+    parser.add_argument('--batch_size', type=int, default=32, help="Batch size for training and evaluation.")
 
-with torch.no_grad():
-    n_correct = 0
-    n_samples = 0
-    n_class_correct = [0 for _ in range(10)]
-    n_class_samples = [0 for _ in range(10)]
-    for images, labels in test_loader:
-        images = images.to(device)
-        labels = labels.to(device)
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        n_samples += labels.size(0)
-        n_correct += (predicted == labels).sum().item()
+    # --- Optional Features ---
+    parser.add_argument('--use_bn', action='store_true', help="Enable Batch Normalization in architectures.")
+    parser.add_argument('--use_dropout', action='store_true', help="Enable Dropout in architectures.")
+    parser.add_argument('--dropout_rate', type=float, default=0.5, help="Dropout probability if --use_dropout is set.")
 
-        for i in range(batch_size):
-            label = labels[i]
-            pred = predicted[i]
-            if pred == label:
-                n_class_correct[label] += 1
-            n_class_samples[label] += 1
+    args = parser.parse_args()
 
-    acc = 100.0 * n_correct / n_samples
-    print(f"Accuracy: {acc}")
+    # --- Post-processing and Setup ---
+    # Create output directory if it doesn't exist
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+        print(f"Created output directory: {args.output_dir}")
 
-    for i in range(10):
-        acc = 100.0 * n_class_correct[i] / n_class_samples[i]
-        print(f"Accuracy of {classes[i]}: {acc}")
+    # Setup Logging
+    log_filename = f"log_{args.fusion_type}_{time.strftime('%Y%m%d_%H%M%S')}.log"
+    log_filepath = os.path.join(args.output_dir, log_filename)
+    log_level_map = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO, 'WARNING': logging.WARNING, 'ERROR': logging.ERROR}
+    setup_logging(log_filepath, level=log_level_map.get(args.log_level, logging.INFO))
 
-torch.save(model.state_dict(), 'model_weights.pth')
+    # Determine device
+    if args.device:
+        device = torch.device(args.device)
+    else:
+        device = torch.device("mps" if torch.mps.is_available() else "cpu")
+    logging.info(f"Selected device: {device}")
+
+    # Convert args to config dictionary
+    config = vars(args)  # Converts Namespace to dict
+    config['device'] = device
+    # Add any other fixed configurations if needed
+    # config['some_other_param'] = value
+
+    logging.info("Configuration prepared. Starting experiment...")
+    # --- Run Experiment ---
+    try:
+        run_pso_experiment(config)
+        logging.info("Experiment finished successfully.")
+    except Exception as e:
+        logging.exception(f"An error occurred during the experiment: {e}")  # Log traceback
+
+
+if __name__ == '__main__':
+    main()
