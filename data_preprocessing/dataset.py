@@ -1,9 +1,11 @@
-import torch
-import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import Dataset
-import os
+import glob
 import logging
+import os
+
+import numpy as np
+import torchvision.transforms as transforms
+from PIL import Image
+from torch.utils.data import Dataset
 
 # Configure basic logging for this module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
@@ -12,88 +14,152 @@ log = logging.getLogger(__name__)
 
 class ActionDataset(Dataset):
     """
-
     Dataset class for loading action recognition data.
 
-    *** IMPORTANT NOTE ***
-    This implementation SIMULATES the required 4-image input
-    (start_color, end_color, start_depth, end_depth) using the MNIST dataset
-    as requested by the user. Each MNIST digit image is replicated four times.
-    This is ONLY for demonstrating the code structure and WILL NOT perform
-    meaningful action recognition or fusion comparison.
-
-    Replace this with your actual dataset loading logic for your specific
-    action recognition image files and directory structure.
-    ********************
+    This implementation loads the actual action recognition data from the specified directories.
+    It supports both early and late fusion modes.
 
     Args:
-        data_dir (str): Directory where MNIST data is/will be stored (e.g., './data').
-        split (str): 'train' or 'test'.
+        data_dir (str): Root directory where the dataset is stored.
+        split (str): 'train', 'test', or 'val'.
         fusion_type (str): 'early' or 'late'. Determines output format.
         transform (callable, optional): Optional transform to be applied on a sample.
                                         Defaults to basic ToTensor and Normalize.
-        download (bool): If true, downloads the dataset from the internet if not present.
+        download (bool): Not used, kept for compatibility.
     """
 
     def __init__(self, data_dir, split='train', fusion_type='early', transform=None, download=True):
-        log.warning("Initializing ActionDataset using SIMULATED data from MNIST.")
         self.data_dir = data_dir
         self.split = split
         self.fusion_type = fusion_type
-        self.is_train = (split == 'train')
 
         if fusion_type not in ['early', 'late']:
             raise ValueError("fusion_type must be 'early' or 'late'")
 
-        # Define default transformations for MNIST (1 channel, 28x28)
+        # Define paths based on fusion type
+        if fusion_type == 'early':
+            self.data_path = os.path.join(data_dir, 'early', split)
+            log.info(f"Loading early fusion data from: {self.data_path}")
+        else:  # late fusion
+            self.color_path = os.path.join(data_dir, 'late_color', split)
+            self.depth_path = os.path.join(data_dir, 'late_depth', split)
+            log.info(f"Loading late fusion data from: {self.color_path} and {self.depth_path}")
+
+        # Define default transformations if none provided
         if transform is None:
-            # MNIST mean and std are approx 0.1307, 0.3081
             self.transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
+                transforms.Normalize((0.5,), (0.5,))  # Generic normalization, adjust as needed
             ])
-            log.info("Using default ToTensor and Normalize transform for MNIST.")
+            log.info("Using default ToTensor and Normalize transform.")
         else:
             self.transform = transform
             log.info("Using provided custom transform.")
 
-        # --- Load MNIST Data ---
-        mnist_data_path = os.path.join(data_dir, 'MNIST')
-        log.info(f"Loading MNIST data from: {mnist_data_path} (Train={self.is_train}, Download={download})")
-        try:
-            self.mnist_dataset = torchvision.datasets.MNIST(
-                root=mnist_data_path,
-                train=self.is_train,
-                download=download,
-                transform=self.transform  # Apply transform here
-            )
-        except Exception as e:
-            log.error(f"Failed to load or download MNIST dataset from {mnist_data_path}: {e}")
-            raise
+        # Load file paths and labels
+        self.samples = []
+        self.labels = []
+        self._load_dataset()
 
-        # --- Define simulated properties ---
-        self.num_classes = 10  # MNIST has 10 classes (digits 0-9)
-        self.img_height = 28
-        self.img_width = 28
+        # Set dataset properties
+        self.num_classes = len(set(self.labels))
 
-        # Define effective input channels based on simulation and fusion type
-        if self.fusion_type == 'early':
-            # 4 simulated images concatenated (1 channel each)
-            self.input_channels = 4
+        # Set image dimensions based on the first image
+        if len(self.samples) > 0:
+            if fusion_type == 'early':
+                sample_img = Image.open(self.samples[0])
+                self.img_height, self.img_width = sample_img.height, sample_img.width
+                self.input_channels = 4  # Assuming 4 channels for early fusion
+            else:  # late fusion
+                color_img = Image.open(self.samples[0][0])
+                depth_img = Image.open(self.samples[0][1])
+                self.img_height, self.img_width = color_img.height, color_img.width
+                self.input_channels = (2, 2)  # Tuple for color_channels, depth_channels
+        else:
+            log.warning("No samples found in the dataset!")
+            self.img_height, self.img_width = 224, 224  # Default values
+            self.input_channels = 4 if fusion_type == 'early' else (2, 2)
+
+        log.info(f"Dataset loaded with {len(self.samples)} samples, {self.num_classes} classes")
+        log.info(f"Image dimensions: {self.img_height}x{self.img_width}")
+        if fusion_type == 'early':
             log.info(f"Early fusion mode: Outputting single tensor with {self.input_channels} channels.")
-        else:  # Late fusion
-            # 2 simulated color images (1 channel each -> 2 channels)
-            # 2 simulated depth images (1 channel each -> 2 channels)
-            self.input_channels = (2, 2)  # Tuple for color_channels, depth_channels
+        else:
             log.info(f"Late fusion mode: Outputting two tensors with channels {self.input_channels}.")
+
+    def _load_dataset(self):
+        """Load dataset files and extract class labels."""
+        if self.fusion_type == 'early':
+            # For early fusion, load all images with _early.png suffix
+            pattern = os.path.join(self.data_path, '*_early.png')
+            files = glob.glob(pattern)
+
+            for file_path in files:
+                # Extract class label from filename
+                # Assuming format like: class_name_other_info_early.png
+                base_name = os.path.basename(file_path)
+                class_name = base_name.split('_')[0]  # Adjust based on your naming convention
+
+                try:
+                    label = int(class_name)
+                except ValueError:
+                    # If class_name is not an integer, create a mapping
+                    # This is a simplified approach; you might need a more robust solution
+                    if not hasattr(self, 'class_to_idx'):
+                        self.class_to_idx = {}
+
+                    if class_name not in self.class_to_idx:
+                        self.class_to_idx[class_name] = len(self.class_to_idx)
+
+                    label = self.class_to_idx[class_name]
+
+                self.samples.append(file_path)
+                self.labels.append(label)
+        else:  # late fusion
+            # For late fusion, load corresponding color and depth images
+            color_pattern = os.path.join(self.color_path, '*_color.png')
+            color_files = glob.glob(color_pattern)
+
+            for color_file in color_files:
+                # Find corresponding depth file
+                base_name = os.path.basename(color_file)
+                base_name = base_name.replace('_color.png', '')
+                depth_file = os.path.join(self.depth_path, f"{base_name}_depth.png")
+
+                if os.path.exists(depth_file):
+                    # Extract class label from filename
+                    class_name = base_name.split('_')[0]  # Adjust based on your naming convention
+
+                    try:
+                        label = int(class_name)
+                    except ValueError:
+                        # If class_name is not an integer, create a mapping
+                        if not hasattr(self, 'class_to_idx'):
+                            self.class_to_idx = {}
+
+                        if class_name not in self.class_to_idx:
+                            self.class_to_idx[class_name] = len(self.class_to_idx)
+
+                        label = self.class_to_idx[class_name]
+
+                    self.samples.append((color_file, depth_file))
+                    self.labels.append(label)
+                else:
+                    log.warning(f"Missing depth file for {base_name}")
+
+        if len(self.samples) == 0:
+            log.warning(f"No samples found for {self.fusion_type} fusion in {self.split} split!")
+
+        # Convert labels to numpy array for easier handling
+        self.labels = np.array(self.labels)
 
     def __len__(self):
         """Return the total number of samples."""
-        return len(self.mnist_dataset)
+        return len(self.samples)
 
     def __getitem__(self, idx):
         """
-        Gets the simulated 4-image data and label for a given index.
+        Gets the actual image data and label for a given index.
 
         Returns:
             if fusion_type == 'early':
@@ -101,32 +167,33 @@ class ActionDataset(Dataset):
             if fusion_type == 'late':
                 tuple: (color_tensor, depth_tensor, label) where tensors are [2, H, W]
         """
-        # Get the single MNIST image and its label
-        mnist_img_tensor, label = self.mnist_dataset[idx]
-        # mnist_img_tensor shape is [1, H, W] after ToTensor transform
+        label = self.labels[idx]
 
-        # Simulate the four images by replicating the tensor
-        # In a real dataset, you would load four different images here.
-        img_start_color = mnist_img_tensor  # Shape: [1, H, W]
-        img_end_color = mnist_img_tensor  # Shape: [1, H, W]
-        img_start_depth = mnist_img_tensor  # Shape: [1, H, W] (using grayscale as depth)
-        img_end_depth = mnist_img_tensor  # Shape: [1, H, W]
-
-        # --- Format output based on fusion type ---
         if self.fusion_type == 'early':
-            # Concatenate along the channel dimension (dim=0)
-            fused_tensor = torch.cat(
-                (img_start_color, img_end_color, img_start_depth, img_end_depth),
-                dim=0
-            )  # Shape: [4, H, W]
-            return fused_tensor, label
+            # Load early fusion image
+            img_path = self.samples[idx]
+            img = Image.open(img_path).convert('RGB')  # Ensure it's RGB
+
+            if self.transform:
+                img = self.transform(img)
+
+            # For early fusion, we assume the image already has all information
+            # If your early fusion images are not already combined, you'll need to modify this
+            return img, label
 
         else:  # Late fusion
-            # Concatenate color images
-            color_tensor = torch.cat((img_start_color, img_end_color), dim=0)  # Shape: [2, H, W]
-            # Concatenate depth images
-            depth_tensor = torch.cat((img_start_depth, img_end_depth), dim=0)  # Shape: [2, H, W]
-            return color_tensor, depth_tensor, label
+            # Load color and depth images
+            color_path, depth_path = self.samples[idx]
+
+            color_img = Image.open(color_path).convert('RGB')
+            depth_img = Image.open(depth_path).convert('RGB')
+
+            if self.transform:
+                color_img = self.transform(color_img)
+                depth_img = self.transform(depth_img)
+
+            # For late fusion, return separate color and depth tensors
+            return color_img, depth_img, label
 
     def get_details(self):
         """

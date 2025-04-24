@@ -1,6 +1,7 @@
+import logging
+
 import torch
 import torch.nn as nn
-import logging
 
 
 # --- Model Building Function ---
@@ -68,7 +69,7 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
                 else:
                     raise ValueError(f"Unsupported pool type: {pool_type}")
                 layers.append(pool_layer)
-                # Channel number doesn't change after pooling
+                # The channel number doesn't change after pooling
 
             elif layer_type == 'bn':
                 if is_conv_part:
@@ -199,10 +200,10 @@ if __name__ == '__main__':
 
     test_config = {}  # Empty config for this test
     test_input_channels = 3
-    test_num_classes = 5
+    test_num_classes = 4
     # Assume dummy input size for testing calculation trace (if not using AdaptiveAvgPool)
-    test_input_height = 32
-    test_input_width = 32
+    test_input_height = 64
+    test_input_width = 128
 
     print("\nBuilding model with test architecture...")
     try:
@@ -220,12 +221,12 @@ if __name__ == '__main__':
         print(f"Input shape: {dummy_input.shape}")
         print(f"Output shape: {output.shape}")
         # Check if output shape matches (Batch size, num_classes)
-        assert output.shape == (4, test_num_classes)
+        assert output.shape == (5, test_num_classes)
         print("Forward pass successful!")
 
     except ValueError as e:
         print(f"\nError building model: {e}")
-    except Exception as e:
-        print(f"\nAn unexpected error occurred: {e}")
+    # except Exception as e:
+    #     print(f"\nAn unexpected error occurred: {e}")
 
     print("\n--- Test Complete ---")

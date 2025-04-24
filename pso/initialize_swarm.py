@@ -1,6 +1,6 @@
 import random
 
-from particle import Particle  # Import the Particle class
+from .particle import Particle  # Import the Particle class
 
 
 def _add_random_conv(k_max, maps_max):

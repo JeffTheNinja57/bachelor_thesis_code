@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 concat_images.py - Image Concatenation for Action Recognition Dataset
 
