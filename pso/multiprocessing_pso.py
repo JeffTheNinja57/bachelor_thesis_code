@@ -13,7 +13,7 @@ from .pso_helpers import UpdateParticleVelocity
 def evaluate_particle(particle, dataset, e_train, config, device_str, result_queue, particle_idx):
     """
     Worker function to evaluate a particle in a separate process.
-    
+
     Args:
         particle: The particle to evaluate
         dataset: The dataset for training
@@ -26,25 +26,31 @@ def evaluate_particle(particle, dataset, e_train, config, device_str, result_que
     try:
         # Convert device string to torch.device
         device = torch.device(device_str)
-        
+
         # Clear GPU cache if using MPS
         if device.type == 'mps':
             torch.mps.empty_cache()
-            
+
         print(f"  Process {mp.current_process().name}: Evaluating particle {particle_idx}...")
-        
+
         # Compute loss for the particle
         loss = ComputeLoss(particle, dataset, e_train, config, device)
-        
+
         # Update particle's loss and pBest
         particle.loss = loss
         if loss < particle.pBest_loss:
             particle.pBest_architecture = copy.deepcopy(particle.architecture)
             particle.pBest_loss = loss
-            
+
+        # Ensure any tensors in the particle are moved to CPU before sharing
+        # This is a precaution to avoid "_share_filename_: only available on CPU" errors
+        # when sharing tensors between processes
+        if hasattr(particle, 'model') and particle.model is not None:
+            particle.model = particle.model.cpu()
+
         # Put result in queue
         result_queue.put((particle_idx, particle, loss))
-        
+
     except Exception as e:
         print(f"  ERROR in process {mp.current_process().name}: {e}")
         # Return a failed result
@@ -54,7 +60,7 @@ def evaluate_particle(particle, dataset, e_train, config, device_str, result_que
 def multiprocessing_psoCNN(config):
     """
     Performs Particle Swarm Optimization to find a good CNN architecture using multiprocessing.
-    
+
     This version evaluates multiple particles in parallel using separate processes.
 
     Args:
@@ -88,10 +94,11 @@ def multiprocessing_psoCNN(config):
         use_bn = config.get('use_bn', False)  # Optional params
         use_dropout = config.get('use_dropout', False)
         dropout_rate = config.get('dropout_rate', 0.5)
-        
+        max_fc_layers = config.get('max_fc_layers', 5)  # Default to 5 if not specified
+
         # Determine number of processes to use
         num_processes = config.get('num_processes', max(1, mp.cpu_count() - 1))
-        
+
         # Convert device to string for passing to worker processes
         device_str = str(device)
 
@@ -112,12 +119,12 @@ def multiprocessing_psoCNN(config):
 
     print("--- Starting multiprocessing_psoCNN ---")
     print(
-        f"Config: N={N}, iter={iter_max}, l_max={l_max}, Cg={Cg}, k_max={k_max}, maps_max={maps_max}, n_max={n_max}, n_out={n_out}, e_train={e_train}, e_test={e_test}, device={device}, BN={use_bn}, Dropout={use_dropout}")
+        f"Config: N={N}, iter={iter_max}, l_max={l_max}, max_fc_layers={max_fc_layers}, Cg={Cg}, k_max={k_max}, maps_max={maps_max}, n_max={n_max}, n_out={n_out}, e_train={e_train}, e_test={e_test}, device={device}, BN={use_bn}, Dropout={use_dropout}")
     print(f"Using {num_processes} processes for parallel evaluation")
 
     # 1. Initialize the swarm
     swarm = InitializeSwarm(N, l_max, maps_max, k_max, n_max, n_out,
-                            use_bn, use_dropout, dropout_rate)
+                            use_bn, use_dropout, dropout_rate, max_fc_layers)
     if not swarm:
         print("ERROR: Swarm initialization failed.")
         return None, float('inf')
@@ -126,11 +133,11 @@ def multiprocessing_psoCNN(config):
     print("--- Initial Evaluation Phase ---")
     gBest = None
     gBest_loss = float('inf')
-    
+
     # Create a pool of workers for initial evaluation
     result_queue = mp.Queue()
     processes = []
-    
+
     # Start processes for initial evaluation
     for i, Pi in enumerate(swarm):
         p = mp.Process(
@@ -141,23 +148,23 @@ def multiprocessing_psoCNN(config):
         p.start()
         # Stagger starts to avoid memory spikes
         time.sleep(1)
-    
+
     # Collect results and update swarm
     for _ in range(N):
         idx, particle, loss = result_queue.get()
         if particle is not None:
             swarm[idx] = particle
-            
+
             # Update global best if needed
             if loss < gBest_loss:
                 gBest = copy.deepcopy(particle)
                 gBest_loss = loss
                 print(f"  New initial gBest found! Particle {idx + 1}, Loss: {gBest_loss:.4f}")
-    
+
     # Wait for all processes to finish
     for p in processes:
         p.join()
-    
+
     if gBest is None:
         print("ERROR: Initial evaluation failed for all particles or resulted in Inf loss.")
         return None, float('inf')
@@ -177,11 +184,11 @@ def multiprocessing_psoCNN(config):
             Pi.velocity = UpdateParticleVelocity(Pi, Cg, gBest)
             Pi = UpdateParticle(Pi, config)  # Update particle in place
             swarm[i] = Pi
-        
+
         # Evaluate particles in parallel
         result_queue = mp.Queue()
         processes = []
-        
+
         # Start processes for evaluation
         for i, Pi in enumerate(swarm):
             p = mp.Process(
@@ -192,19 +199,19 @@ def multiprocessing_psoCNN(config):
             p.start()
             # Stagger starts to avoid memory spikes
             time.sleep(1)
-        
+
         # Collect results and update swarm
         for _ in range(N):
             idx, particle, loss = result_queue.get()
             if particle is not None:
                 swarm[idx] = particle
-                
+
                 # Update global best if needed
                 if particle.pBest_loss < gBest_loss:
                     print(f"  Particle {idx + 1}: New gBest found! Loss: {particle.pBest_loss:.4f} (was {gBest_loss:.4f})")
                     gBest = copy.deepcopy(particle)
                     gBest_loss = particle.pBest_loss
-        
+
         # Wait for all processes to finish
         for p in processes:
             p.join()
@@ -236,6 +243,12 @@ def multiprocessing_psoCNN(config):
 
     print(f"--- Final Loss after {e_test} epochs: {gBest.loss:.4f} ---")
 
+    # Ensure any models in the particle are moved to CPU before returning
+    # This is crucial to avoid "_share_filename_: only available on CPU" errors
+    # when the particle is shared between processes
+    if hasattr(gBest, 'model') and gBest.model is not None:
+        gBest.model = gBest.model.cpu()
+
     # 6. Return the best particle and its final loss
     return gBest, gBest.loss
 
@@ -255,6 +268,7 @@ if __name__ == '__main__':
         'iter_max': 4,  # Max iterations
         'dataset': dummy_dataset_placeholder,  # Use placeholder
         'l_max': 7,  # Max functional layers
+        'max_fc_layers': 5,  # Maximum number of fully connected layers
         'Cg': 0.7,  # gBest probability factor
         'k_max': 5,  # Max kernel size (e.g., 5x5)
         'maps_max': 16,  # Max feature maps per conv layer

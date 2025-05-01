@@ -16,6 +16,7 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
         input_channels (int): Number of channels in the input image.
         num_classes (int): Number of output classes for the final layer.
         config (dict): Configuration dictionary (potentially used for details like activation).
+                      Can include 'activation_type': 'relu' or 'leaky_relu' and 'leaky_relu_slope'.
 
     Returns:
         nn.Module: The constructed PyTorch model.
@@ -28,6 +29,20 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
     current_channels = input_channels
     fc_input_features = None  # Track features entering the first FC layer
     is_conv_part = True  # Flag to track if we are still in Conv/Pool section
+
+    # Determine activation function to use
+    activation_type = config.get('activation_type', 'relu')
+    leaky_relu_slope = config.get('leaky_relu_slope', 0.3)  # Default slope for leaky ReLU
+
+    def get_activation(inplace=True):
+        """Helper function to get the appropriate activation function"""
+        if activation_type == 'leaky_relu':
+            return nn.LeakyReLU(negative_slope=leaky_relu_slope, inplace=inplace)
+        else:  # Default to ReLU
+            return nn.ReLU(inplace=inplace)
+
+    logging.info(f"Using activation: {activation_type}" + 
+                (f" with slope {leaky_relu_slope}" if activation_type == 'leaky_relu' else ""))
 
     # --- Layer Creation Loop ---
     for i, layer_def in enumerate(architecture_encoding):
@@ -49,9 +64,9 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
                                        kernel_size=kernel_size, stride=stride, padding=padding)
                 layers.append(conv_layer)
                 current_channels = out_channels
-                # Add activation (ReLU) after Conv, unless followed immediately by BN
+                # Add activation after Conv, unless followed immediately by BN
                 if not (i + 1 < len(architecture_encoding) and architecture_encoding[i + 1].get('type') == 'bn'):
-                    layers.append(nn.ReLU(inplace=True))
+                    layers.append(get_activation())
 
             elif layer_type == 'pool':
                 if not is_conv_part:
@@ -83,8 +98,8 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
                     bn_layer = nn.BatchNorm1d(fc_input_features)  # Apply BN on features from previous Linear
 
                 layers.append(bn_layer)
-                # Add activation (ReLU) after BN
-                layers.append(nn.ReLU(inplace=True))
+                # Add activation after BN
+                layers.append(get_activation())
 
 
             elif layer_type == 'fc':
@@ -105,11 +120,11 @@ def build_cnn(architecture_encoding, input_channels, num_classes, config):
                 layers.append(fc_layer)
                 fc_input_features = neurons  # Output features for the next layer
 
-                # Add activation (ReLU) after FC, unless it's the final output layer
+                # Add activation after FC, unless it's the final output layer
                 # or followed immediately by BN
                 if not is_last_layer and not \
                         (i + 1 < len(architecture_encoding) and architecture_encoding[i + 1].get('type') == 'bn'):
-                    layers.append(nn.ReLU(inplace=True))
+                    layers.append(get_activation())
 
             elif layer_type == 'dropout':
                 rate = layer_def.get('rate', 0.5)

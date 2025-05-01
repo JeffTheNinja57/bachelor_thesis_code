@@ -1,5 +1,5 @@
 """
-concat_images.py - Image Concatenation for Action Recognition Dataset
+preprocessing.py - Image Concatenation for Action Recognition Dataset
 
 This script processes an action recognition dataset by concatenating images in two ways:
 1. Late Fusion: Horizontally concatenate pairs of images (color-color and depth-depth)

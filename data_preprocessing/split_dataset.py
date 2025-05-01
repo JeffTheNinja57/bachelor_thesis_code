@@ -44,7 +44,6 @@ OUTPUT_DIRS = {
 SUFFIXES = {
     'early': '_early.png',
     'late_color': '_color.png',
-    # NOTE: your fused depth maps came from depthcolormap, so:
     'late_depth': '_depth.png',
 }
 

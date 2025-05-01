@@ -90,11 +90,22 @@ class LateFusionModel(nn.Module):
 
         # Option 2: Define a new shared classifier (more flexible)
         # Example: A single Linear layer for classification
+
+        # Determine activation function to use
+        activation_type = config.get('activation_type', 'relu')
+        if activation_type == 'leaky_relu':
+            leaky_relu_slope = config.get('leaky_relu_slope', 0.3)
+            activation = nn.LeakyReLU(negative_slope=leaky_relu_slope, inplace=True)
+            logging.info(f"Using LeakyReLU activation with slope {leaky_relu_slope} in shared classifier")
+        else:
+            activation = nn.ReLU(inplace=True)
+            logging.info("Using ReLU activation in shared classifier")
+
         self.shared_classifier = nn.Sequential(
             # Optional: Add intermediate FC layers here if desired
             # nn.Linear(combined_feature_size, intermediate_features),
-            # nn.ReLU(),
-            # nn.Dropout(p=config.get('dropout_rate', 0.5) if config.get('use_dropout') else 0.0),
+            activation,
+            nn.Dropout(p=config.get('dropout_rate', 0.5) if config.get('use_dropout') else 0.0),
             nn.Linear(combined_feature_size, num_classes)  # Final classification layer
         )
         logging.info(f"Shared classifier structure:\n{self.shared_classifier}")
@@ -130,8 +141,7 @@ class LateFusionModel(nn.Module):
         return output
 
 
-def build_late_fusion_model(shared_architecture_encoding, input_channels_color, input_channels_depth, num_classes,
-                            config):
+def build_late_fusion_model(shared_architecture_encoding, input_channels_color, input_channels_depth, num_classes, config):
     """
     Builds a Late Fusion model using a shared architecture for color and depth branches.
 

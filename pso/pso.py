@@ -42,6 +42,7 @@ def psoCNN(config):
         use_bn = config.get('use_bn', False)  # Optional params
         use_dropout = config.get('use_dropout', False)
         dropout_rate = config.get('dropout_rate', 0.5)
+        max_fc_layers = config.get('max_fc_layers', 5)  # Default to 5 if not specified
 
         # Basic validation
         if not all([isinstance(N, int), N > 0, isinstance(iter_max, int), iter_max >= 0,
@@ -60,11 +61,11 @@ def psoCNN(config):
 
     print("--- Starting psoCNN ---")
     print(
-        f"Config: N={N}, iter={iter_max}, l_max={l_max}, Cg={Cg}, k_max={k_max}, maps_max={maps_max}, n_max={n_max}, n_out={n_out}, e_train={e_train}, e_test={e_test}, device={device}, BN={use_bn}, Dropout={use_dropout}")
+        f"Config: N={N}, iter={iter_max}, l_max={l_max}, max_fc_layers={max_fc_layers}, Cg={Cg}, k_max={k_max}, maps_max={maps_max}, n_max={n_max}, n_out={n_out}, e_train={e_train}, e_test={e_test}, device={device}, BN={use_bn}, Dropout={use_dropout}")
 
     # 1. Initialize the swarm
     swarm = InitializeSwarm(N, l_max, maps_max, k_max, n_max, n_out,
-                            use_bn, use_dropout, dropout_rate)
+                            use_bn, use_dropout, dropout_rate, max_fc_layers)
     if not swarm:
         print("ERROR: Swarm initialization failed.")
         return None, float('inf')
@@ -159,6 +160,12 @@ def psoCNN(config):
 
     print(f"--- Final Loss after {e_test} epochs: {gBest.loss:.4f} ---")
 
+    # Ensure any models in the particle are moved to CPU before returning
+    # This is crucial to avoid "_share_filename_: only available on CPU" errors
+    # when the particle is shared between processes
+    if hasattr(gBest, 'model') and gBest.model is not None:
+        gBest.model = gBest.model.cpu()
+
     # 6. Return the best particle and its final loss
     return gBest, gBest.loss
 
@@ -178,6 +185,7 @@ if __name__ == '__main__':
         'iter_max': 4,  # Max iterations
         'dataset': dummy_dataset_placeholder,  # Use placeholder
         'l_max': 7,  # Max functional layers
+        'max_fc_layers': 5,  # Maximum number of fully connected layers
         'Cg': 0.7,  # gBest probability factor
         'k_max': 5,  # Max kernel size (e.g., 5x5)
         'maps_max': 16,  # Max feature maps per conv layer

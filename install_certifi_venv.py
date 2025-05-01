@@ -1,6 +1,5 @@
 # install_certifi_venv.py (revised)
 import os
-import ssl
 import subprocess
 import sys
 import certifi  # Added import

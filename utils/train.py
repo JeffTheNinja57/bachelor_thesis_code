@@ -31,7 +31,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     # Wrap dataloader with tqdm for a progress bar
     progress_bar = tqdm(dataloader, desc="Train Epoch", leave=False)
 
-    for inputs, labels in progress_bar:
+    for inputs, labels, _ in progress_bar:
         # Move data to the specified device
         inputs, labels = inputs.to(device), labels.to(device)
 
@@ -82,7 +82,7 @@ def evaluate_model(model, dataloader, criterion, device):
     progress_bar = tqdm(dataloader, desc="Evaluate", leave=False)
 
     with torch.no_grad():  # Disable gradient calculations
-        for inputs, labels in progress_bar:
+        for inputs, labels, _ in progress_bar:
             inputs, labels = inputs.to(device), labels.to(device)
 
             outputs = model(inputs)

@@ -1,35 +1,48 @@
-# project_root/utils/helpers.py
-
-import os
+import argparse
+import datetime
 import json
 import logging
+import os
+import sys
+from datetime import datetime
+
 import torch
-import datetime
+from torch import nn, optim
 
+# Global flag to track if logging has been configured
+_logging_configured = False
 
-def setup_logging(log_file='experiment.log', level=logging.INFO):
+def configure_logging(log_level='INFO'):
     """
-    Sets up basic logging to console and a file.
+    Configure logging in a way that works with multiprocessing.
+    Uses a global flag to ensure logging is only configured once.
 
     Args:
-        log_file (str): Path to the log file.
-        level (int): Logging level (e.g., logging.INFO, logging.DEBUG).
+        log_level (str): Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
     """
-    log_dir = os.path.dirname(log_file)
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    global _logging_configured
+
+    if _logging_configured:
+        return
+
+    # Convert string log level to logging constant
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
 
     # Configure root logger
     logging.basicConfig(
-        level=level,
+        level=numeric_level,
         format='%(asctime)s [%(levelname)s] %(message)s',
-        handlers=[
-            logging.FileHandler(log_file, mode='a'),  # Append mode
-            logging.StreamHandler()  # Log to console
-        ]
+        datefmt='%Y-%m-%d %H:%M:%S',
+        stream=sys.stdout  # Use stdout instead of stderr
     )
-    logging.info("Logging setup complete.")
-    print(f"Logging to console and file: {os.path.abspath(log_file)}")
+
+    # Set flag to prevent reconfiguration
+    _logging_configured = True
+
+    # Silence other loggers that might be too verbose
+    logging.getLogger('PIL').setLevel(logging.WARNING)
+
+    logging.debug("Logging configured successfully")
 
 
 def save_checkpoint(model, optimizer, epoch, loss, filepath):
@@ -130,7 +143,7 @@ def save_results(results_dict, filepath):
             return
 
     # Add timestamp to results
-    results_dict['timestamp'] = datetime.datetime.now().isoformat()
+    results_dict['timestamp'] = datetime.now().isoformat()
 
     try:
         with open(filepath, 'w') as f:
@@ -141,61 +154,119 @@ def save_results(results_dict, filepath):
         logging.error(f"Failed to save results to {filepath}: {e}")
 
 
-# --- Example Usage (Standalone Test) ---
-if __name__ == '__main__':
-    print("--- Testing utils/helpers.py ---")
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="PSO-CNN Architecture Search for Action Recognition")
 
-    # Setup logging (creates a test log file)
-    log_filename = "test_helpers.log"
-    if os.path.exists(log_filename):
-        os.remove(log_filename)  # Clean up previous test log
-    setup_logging(log_filename, level=logging.DEBUG)
-    logging.info("This is an info message.")
-    logging.debug("This is a debug message.")
+    # --- Paths ---
+    parser.add_argument('--data_dir', type=str, required=True,
+                        help="Directory containing the action recognition dataset.")
+    parser.add_argument('--output_dir', type=str, default="results",
+                        help="Directory to save results, logs, and models.")
 
-    # Test save/load checkpoint
-    # Dummy model and optimizer
-    model = torch.nn.Linear(10, 2)
-    optimizer = torch.optim.Adam(model.parameters())
-    epoch = 5
-    loss = 0.1234
-    checkpoint_path = "test_checkpoint.pth"
-    if os.path.exists(checkpoint_path):
-        os.remove(checkpoint_path)  # Clean up previous checkpoint
+    # --- Experiment Setup ---
+    parser.add_argument('--fusion_type', type=str, required=True, choices=['early', 'late'],
+                        help="Fusion strategy to use.")
+    parser.add_argument('--device', type=str, default=None,
+                        help="Device to use ('mps', 'cuda', 'cpu'). Auto-detects if None.")
+    parser.add_argument('--num_workers', type=int, default=1, help="Number of dataloader workers.")
+    parser.add_argument('--log_level', type=str, default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help="Logging level.")
 
-    logging.info("\nTesting save_checkpoint...")
-    save_checkpoint(model, optimizer, epoch, loss, checkpoint_path)
+    # --- PSO Parameters ---
+    parser.add_argument('--swarm_size', type=int, default=20, help="Number of particles in the swarm (N).")
+    parser.add_argument('--max_iter', type=int, default=30, help="Maximum number of PSO iterations.")
+    parser.add_argument('--max_layers', type=int, default=15, help="Maximum number of functional layers (l_max).")
+    parser.add_argument('--max_fc_layers', type=int, default=5, help="Maximum number of fully connected layers.")
+    parser.add_argument('--cg', type=float, default=0.7, help="PSO parameter Cg (gBest influence probability).")
+    parser.add_argument('--k_max', type=int, default=7, help="Maximum Conv kernel size (odd number).")
+    parser.add_argument('--maps_max', type=int, default=128, help="Maximum Conv feature maps.")
+    parser.add_argument('--n_max', type=int, default=256, help="Maximum neurons in intermediate FC layers.")
+    parser.add_argument('--n_out', type=int, default=20, help="Number of output classes (n_out).")
 
-    logging.info("\nTesting load_checkpoint...")
-    # Create new instances to load into
-    new_model = torch.nn.Linear(10, 2)
-    new_optimizer = torch.optim.Adam(new_model.parameters())
-    loaded_epoch, loaded_loss = load_checkpoint(checkpoint_path, new_model, new_optimizer)
-    print(f"Loaded epoch: {loaded_epoch}, Loaded loss: {loaded_loss}")
-    # Simple check if loading worked (parameters should be the same)
-    print(f"Model params match after load: {torch.equal(model.weight, new_model.weight)}")
+    # --- Training Parameters ---
+    parser.add_argument('--e_train', type=int, default=50, help="Epochs for particle evaluation during PSO.")
+    parser.add_argument('--e_test', type=int, default=10, help="Epochs for final training of the best model.")
+    parser.add_argument('--lr', type=float, default=0.001, help="Learning rate for Adam optimizer.")
+    parser.add_argument('--batch_size', type=int, default=32, help="Batch size for training and evaluation.")
 
-    # Test save results
-    logging.info("\nTesting save_results...")
-    results = {
-        'best_loss': 0.05,
-        'best_accuracy': 0.98,
-        'best_architecture': [
-            {'type': 'conv', 'out_channels': 10, 'kernel_size': 3},
-            {'type': 'fc', 'neurons': 2}
-        ],
-        'config': {'lr': 0.01, 'epochs': 10}
+    # --- Optional Features ---
+    parser.add_argument('--use_bn', action='store_true', help="Enable Batch Normalization in architectures.")
+    parser.add_argument('--use_dropout', action='store_true', help="Enable Dropout in architectures.")
+    parser.add_argument('--dropout_rate', type=float, default=0.5, help="Dropout probability if --use_dropout is set.")
+    parser.add_argument('--log_dir', type=str, default="logs", help="Directory for experiment logs.")
+
+    # --- PSO Options ---
+    parser.add_argument('--use_multiprocessing', action='store_true',
+                        help="Use multiprocessing PSO instead of standard PSO.")
+    parser.add_argument('--num_processes', type=int, default=4,
+                        help="Number of processes to use for multiprocessing PSO. Default: max(1, cpu_count() - 1)")
+
+    return parser.parse_args()
+
+
+def setup_experiment(args):
+    """Set up the experiment configuration."""
+    # Configure logging first
+    configure_logging(args.log_level)
+
+    # Create output directory if it doesn't exist
+    logger = logging.getLogger(__name__)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    output_dir = os.path.join(args.output_dir, f"experiment_{args.fusion_type}_{timestamp}")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Determine device
+    if args.device is None:
+        if torch.backends.mps.is_available():
+            device = torch.device('mps')
+        elif torch.cuda.is_available():
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
+    else:
+        device = torch.device(args.device)
+
+    logger.info(f"Using device: {device}")
+
+    # Create experiment configuration
+    config = {
+        'data_dir': args.data_dir,
+        'output_dir': output_dir,
+        'fusion_type': args.fusion_type,
+        'N': args.swarm_size,
+        'iter_max': args.max_iter,
+        'l_max': args.max_layers,
+        'max_fc_layers': args.max_fc_layers,
+        'Cg': args.cg,
+        'k_max': args.k_max,
+        'maps_max': args.maps_max,
+        'n_max': args.n_max,
+        'n_out': args.n_out,
+        'e_train': args.e_train,
+        'e_test': args.e_test,
+        'learning_rate': args.lr,
+        'batch_size': args.batch_size,
+        'device': device,
+        'use_bn': args.use_bn,
+        'use_dropout': args.use_dropout,
+        'dropout_rate': args.dropout_rate,
+        'num_workers': args.num_workers,
+        'use_multiprocessing': args.use_multiprocessing
     }
-    results_path = "test_results.json"
-    if os.path.exists(results_path):
-        os.remove(results_path)  # Clean up previous results
 
-    save_results(results, results_path)
-    # Verify file exists
-    print(f"Results file exists: {os.path.exists(results_path)}")
+    # Add num_processes if specified
+    if args.num_processes is not None:
+        config['num_processes'] = args.num_processes
 
-    # Clean up test files
-    # os.remove(log_filename)
-    # os.remove(checkpoint_path)
-    # os.remove(results_path)
-    print("\n--- Test Complete (Check test_helpers.log, test_checkpoint.pth, test_results.json) ---")
+    # Save configuration to file
+    config_file = os.path.join(output_dir, 'config.json')
+    with open(config_file, 'w') as f:
+        # Convert device to string for JSON serialization
+        config_json = config.copy()
+        config_json['device'] = str(config_json['device'])
+        json.dump(config_json, f, indent=4)
+
+    logger.info(f"Experiment configuration saved to {config_file}")
+
+    return config

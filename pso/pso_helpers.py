@@ -26,6 +26,11 @@ def ComputeLoss(particle, dataset, epochs, config, device):
         if input_channels is None or num_classes is None:
             raise ValueError("Config must contain 'input_channels' and 'num_classes'")
 
+        # Handle the case where input_channels is a tuple (for late fusion)
+        if isinstance(input_channels, tuple):
+            # Use the first value (color channels) for PSO evaluation
+            input_channels = input_channels[0]
+
         model = build_cnn(particle.architecture, input_channels, num_classes, config)
         model.to(device)
 
@@ -264,9 +269,13 @@ def UpdateParticle(particle, config):
     elif new_architecture[0]['type'] != 'conv':
         print("  ERROR: UpdateParticle: First layer must be Conv.")
         valid_arch = False
-    elif new_architecture[-1]['type'] != 'fc' or new_architecture[-1].get('neurons') != n_out:
-        print(f"  ERROR: UpdateParticle: Last layer must be FC with {n_out} neurons.")
+    elif new_architecture[-1]['type'] != 'fc':
+        print(f"  ERROR: UpdateParticle: Last layer must be FC.")
         valid_arch = False
+    elif new_architecture[-1].get('neurons') != n_out:
+        # Fix the last layer to have the correct number of output neurons
+        print(f"  WARNING: Last FC layer has {new_architecture[-1].get('neurons')} neurons instead of {n_out}. Fixing...")
+        new_architecture[-1]['neurons'] = n_out
     else:
         # Check FC layer sequencing
         fc_started = False
