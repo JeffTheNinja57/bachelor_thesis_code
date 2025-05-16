@@ -5,6 +5,7 @@ seaborn~=0.13.2
 scikit-learn~=1.6.1
 pandas~=2.2.3
 pillow~=11.2.1
+keras~=3.9.2
 
 # The folowing packages are used for running on Apple Silicon
 # tensorflow-macos~=2.16.2
