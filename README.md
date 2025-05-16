@@ -31,9 +31,9 @@ We have extended the original PSO-CNN implementation with the following features
 
 1. **Late Fusion Experiments**: We've added a new module (`late_fusion_experiment.py`) that implements late fusion of color and depth streams. This allows for multi-modal fusion where separate CNN architectures are optimized for each modality and then combined.
 
-2. **Early Fusion Support**: The main script now supports early fusion experiments where multi-modal data is combined at the input level before being processed by a single CNN.
+2. **Early Fusion Support**: Added a .amat conversion file, to convert the preprocessed data into easily digestible data for TensorFlow. The main script now supports early fusion experiments where multi-modal data is processed by a single CNN through the aforementioned preprocessing, essentially implementing the original psoCNN to another dataset.
 
-3. **TensorFlow 2.16.2 Compatibility**: The codebase has been updated to work with TensorFlow 2.16.2, incorporating all necessary API changes from the original TensorFlow 1.14 implementation. This was important for Metal Perfomance Shaders (MPS) compatibility on Apple Silicon devices, which were the hardware used for testing.
+3. **TensorFlow 2.16.2 Compatibility**: The codebase has been updated to work with TensorFlow 2.16.2 and Keras 3.9.2, incorporating all necessary API changes from the original TensorFlow 1.14 implementation. This was important for Metal Perfomance Shaders (MPS) compatibility on Apple Silicon devices, which were the hardware used for testing.
 
 ## Installation
 
@@ -68,7 +68,7 @@ This implementation uses pip for package management instead of the original Anac
 
 ### Dataset Preparation
 
-1. The datasets should already be available in .amat format, ready to use
+The datasets in .amat format are available upon request.
 
 ### Running Early Fusion Experiments
 
