@@ -3,7 +3,7 @@ Main script for running PSO-CNN experiments.
 
 This script configures and executes Particle Swarm Optimization (PSO) for finding optimal
 CNN architectures for image classification tasks. It handles the complete workflow:
-1. Setting up experiment parameters
+1. Setting up *early fusion* experiment parameters
 2. Running PSO to find the best CNN architecture
 3. Training the best model found
 4. Evaluating performance
