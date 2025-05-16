@@ -57,7 +57,7 @@ This implementation uses pip for package management instead of the original Anac
    pip install -r requirements.txt
    ```
 
-   **Note for Apple Silicon (M1/M2/M3) users**: If you're using an Apple Silicon Mac, uncomment the last two lines in the requirements.txt file to install the Apple-specific TensorFlow packages:
+   **Note for Apple Silicon (M1+) users**: If you're using an Apple Silicon Mac, uncomment the last two lines in the requirements.txt file to install the Apple-specific TensorFlow packages:
    ```
    # tensorflow-macos~=2.16.2
    # tensorflow-metal~=1.2.0
@@ -67,14 +67,7 @@ This implementation uses pip for package management instead of the original Anac
 
 ### Dataset Preparation
 
-1. Download the following datasets and extract them to their corresponding folders inside the `datasets` folder:
-   1. Convex: [http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip)
-   2. Rectangles: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip)
-   3. Rectangles with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip)
-   4. MNIST with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip)
-   5. MNIST with Random Noise as Background: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip)
-   6. MNIST with Rotated Digits: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip)
-   7. MNIST with Rotated Digits and Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip)
+1. The datasets should already be available in .amat format, ready to use
 
 ### Running Early Fusion Experiments
 
