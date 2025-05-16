@@ -1,6 +1,6 @@
 # Particle Swarm Optimization for Multimodal CNN: Early vs. Late Fusion Performance for Action Recognition.
 
-**Extended by:** Mihnea Angheluță from the original work by Francisco Erivaldo Fernandes Junior and Gary G. Yen
+**Extended by** Mihnea Angheluță from the original work by Francisco Erivaldo Fernandes Junior and Gary G. Yen
 
 ## Overview
 
