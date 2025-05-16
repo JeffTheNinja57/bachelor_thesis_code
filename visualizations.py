@@ -1,14 +1,21 @@
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import glob
-import tensorflow as tf
-from sklearn.metrics import confusion_matrix
+"""
+Visualization module for PSO-CNN experiment results.
+
+This module provides tools for creating comprehensive visualizations of PSO-CNN
+experiment results, including accuracy comparisons, architecture comparisons,
+confusion matrices, and PSO convergence plots. It also generates summary reports
+in markdown format.
+"""
+
 import argparse
-import time
+import glob
+import os
 from datetime import datetime
-import pandas as pd
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import tensorflow as tf
 from matplotlib.colors import LinearSegmentedColormap
 
 # Set up consistent styling for all plots
@@ -17,14 +24,21 @@ sns.set_palette("muted")
 sns.set_context("talk")
 
 # Custom color scheme
-colors = ["#2c7bb6", "#00a6ca", "#00ccbc", "#90eb9d", "#ffff8c",
-          "#f9d057", "#f29e2e", "#e76818", "#d7191c"]
+colors = ["#2c7bb6", "#00a6ca", "#00ccbc", "#90eb9d", "#ffff8c", "#f9d057", "#f29e2e", "#e76818", "#d7191c"]
 custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", colors)
 
 
 class PSO_MetricsVisualizer:
     """
-    Creates comprehensive visualizations for PSO-CNN experiment results
+    Creates comprehensive visualizations for PSO-CNN experiment results.
+
+    This class provides methods for loading, analyzing, and visualizing metrics from
+    PSO-CNN experiments. It can generate various plots including accuracy comparisons,
+    architecture comparisons, confusion matrices, and PSO convergence plots. It also
+    creates a summary report in markdown format.
+
+    The visualizer can work with a specific results directory or scan for all available
+    result directories in the ./results folder.
     """
 
     def __init__(self, results_dir=None):
@@ -48,13 +62,30 @@ class PSO_MetricsVisualizer:
         print(f"Visualizations will be saved to: {self.viz_dir}")
 
     def find_all_result_directories(self):
-        """Find all result directories in the ./results folder"""
+        """
+        Find all result directories in the ./results folder.
+
+        Returns:
+            list: List of paths to all directories in the ./results folder
+        """
         if os.path.exists("./results"):
             return [d for d in glob.glob("./results/*") if os.path.isdir(d)]
         return []
 
     def load_metrics_from_dir(self, directory):
-        """Load all available metrics from a directory"""
+        """
+        Load all available metrics from a directory.
+
+        This method searches for .npy files containing metrics in the specified directory
+        and loads them into a dictionary. It looks for both detailed metrics files in the
+        metrics/ subdirectory and accuracy history files in the main directory.
+
+        Args:
+            directory (str): Path to the directory containing experiment results
+
+        Returns:
+            dict: Dictionary mapping metric names to their values
+        """
         metrics = {}
 
         # Look for detailed metrics files
@@ -79,7 +110,16 @@ class PSO_MetricsVisualizer:
         return metrics
 
     def plot_accuracy_comparison(self, all_results, save=True):
-        """Plot accuracy comparison across datasets/experiments"""
+        """
+        Plot accuracy comparison across datasets/experiments.
+
+        This method creates a bar chart comparing the average accuracy across different
+        datasets or experiments, with error bars showing the standard deviation.
+
+        Args:
+            all_results (dict): Dictionary mapping dataset/experiment names to their metrics
+            save (bool, optional): Whether to save the plot to disk. Defaults to True.
+        """
         datasets = []
         accuracies = []
         errors = []
@@ -103,8 +143,7 @@ class PSO_MetricsVisualizer:
 
         plt.figure(figsize=(12, 6))
         x = np.arange(len(datasets))
-        bars = plt.bar(x, accuracies, yerr=errors, capsize=10,
-                       color=sns.color_palette("muted", len(datasets)))
+        bars = plt.bar(x, accuracies, yerr=errors, capsize=10, color=sns.color_palette("muted", len(datasets)))
 
         plt.xlabel('Dataset')
         plt.ylabel('Test Accuracy')
@@ -114,8 +153,7 @@ class PSO_MetricsVisualizer:
 
         for bar in bars:
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2., height + 0.01,
-                     f'{height:.3f}', ha='center', va='bottom')
+            plt.text(bar.get_x() + bar.get_width() / 2., height + 0.01, f'{height:.3f}', ha='center', va='bottom')
 
         if save:
             plt.savefig(os.path.join(self.viz_dir, "dataset_accuracy_comparison.png"))
@@ -124,7 +162,19 @@ class PSO_MetricsVisualizer:
         plt.show()
 
     def plot_metric_history(self, history, metric_name, title, save=True):
-        """Plot a metric's history over iterations/epochs"""
+        """
+        Plot a metric's history over iterations/epochs.
+
+        This method creates a line plot showing how a metric changes over time,
+        with markers at each data point and text labels showing the values.
+
+        Args:
+            history (list or dict): Values of the metric over time. Can be a list, numpy array,
+                                   or dictionary mapping iteration numbers to values.
+            metric_name (str): Name of the metric being plotted (e.g., "accuracy")
+            title (str): Title for the plot
+            save (bool, optional): Whether to save the plot to disk. Defaults to True.
+        """
         plt.figure(figsize=(10, 6))
 
         if isinstance(history, list):
@@ -154,7 +204,19 @@ class PSO_MetricsVisualizer:
         plt.show()
 
     def plot_confusion_matrix(self, cm, classes, title="Confusion Matrix", normalize=False, save=True):
-        """Plot a confusion matrix with proper labels and styling"""
+        """
+        Plot a confusion matrix with proper labels and styling.
+
+        This method creates a heatmap visualization of a confusion matrix, with options
+        to normalize the values and customize the title.
+
+        Args:
+            cm (numpy.ndarray): Confusion matrix array
+            classes (list): List of class names for axis labels
+            title (str, optional): Title for the plot. Defaults to "Confusion Matrix".
+            normalize (bool, optional): Whether to normalize values by row. Defaults to False.
+            save (bool, optional): Whether to save the plot to disk. Defaults to True.
+        """
         plt.figure(figsize=(10, 8))
 
         if normalize:
@@ -163,8 +225,7 @@ class PSO_MetricsVisualizer:
         else:
             fmt = 'd'
 
-        sns.heatmap(cm, annot=True, fmt=fmt, cmap=custom_cmap,
-                    xticklabels=classes, yticklabels=classes, cbar=True)
+        sns.heatmap(cm, annot=True, fmt=fmt, cmap=custom_cmap, xticklabels=classes, yticklabels=classes, cbar=True)
 
         plt.ylabel('True Label')
         plt.xlabel('Predicted Label')
@@ -178,7 +239,20 @@ class PSO_MetricsVisualizer:
         plt.show()
 
     def plot_architecture_comparison(self, all_results, save=True):
-        """Plot model size vs accuracy for different architectures"""
+        """
+        Plot model size vs accuracy for different architectures.
+
+        This method creates two scatter plots:
+        1. Model size (MB) vs. accuracy, with point size representing parameter count
+        2. Parameter count vs. accuracy, using a logarithmic scale for parameters
+
+        Both plots use color coding to distinguish different architectures and include
+        annotations with architecture labels.
+
+        Args:
+            all_results (dict): Dictionary mapping dataset/experiment names to their metrics
+            save (bool, optional): Whether to save the plots to disk. Defaults to True.
+        """
         sizes = []
         accuracies = []
         params = []
@@ -203,8 +277,7 @@ class PSO_MetricsVisualizer:
         # Calculate size of scatter points based on parameter count
         norm_params = np.array(params) / max(params) * 500
 
-        scatter = plt.scatter(sizes, accuracies, s=norm_params, alpha=0.6,
-                              c=range(len(sizes)), cmap=custom_cmap)
+        scatter = plt.scatter(sizes, accuracies, s=norm_params, alpha=0.6, c=range(len(sizes)), cmap=custom_cmap)
 
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.xlabel('Model Size (MB)')
@@ -213,10 +286,7 @@ class PSO_MetricsVisualizer:
 
         # Add annotations for points
         for i, label in enumerate(labels):
-            plt.annotate(label, (sizes[i], accuracies[i]),
-                         textcoords="offset points",
-                         xytext=(0, 10),
-                         ha='center')
+            plt.annotate(label, (sizes[i], accuracies[i]), textcoords="offset points", xytext=(0, 10), ha='center')
 
         # Add colorbar legend
         cbar = plt.colorbar(scatter)
@@ -234,8 +304,7 @@ class PSO_MetricsVisualizer:
         plt.figure(figsize=(12, 8))
 
         # Use log scale for parameter count
-        scatter = plt.scatter(params, accuracies, s=200, alpha=0.6,
-                              c=range(len(sizes)), cmap=custom_cmap)
+        scatter = plt.scatter(params, accuracies, s=200, alpha=0.6, c=range(len(sizes)), cmap=custom_cmap)
 
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.xlabel('Parameter Count')
@@ -245,10 +314,7 @@ class PSO_MetricsVisualizer:
 
         # Add annotations for points
         for i, label in enumerate(labels):
-            plt.annotate(label, (params[i], accuracies[i]),
-                         textcoords="offset points",
-                         xytext=(0, 10),
-                         ha='center')
+            plt.annotate(label, (params[i], accuracies[i]), textcoords="offset points", xytext=(0, 10), ha='center')
 
         # Add colorbar legend
         cbar = plt.colorbar(scatter)
@@ -263,7 +329,17 @@ class PSO_MetricsVisualizer:
         plt.show()
 
     def plot_pso_convergence(self, all_results, save=True):
-        """Plot PSO convergence across iterations for different datasets"""
+        """
+        Plot PSO convergence across iterations for different datasets.
+
+        This method creates a line plot showing how the best accuracy found by PSO
+        improves over iterations for each dataset/experiment. It helps visualize
+        the convergence behavior of the PSO algorithm.
+
+        Args:
+            all_results (dict): Dictionary mapping dataset/experiment names to their metrics
+            save (bool, optional): Whether to save the plot to disk. Defaults to True.
+        """
         plt.figure(figsize=(12, 8))
 
         for dataset, results in all_results.items():
@@ -277,8 +353,7 @@ class PSO_MetricsVisualizer:
 
             if acc_history is not None:
                 iterations = range(1, len(acc_history) + 1)
-                plt.plot(iterations, acc_history, marker='o', linestyle='-',
-                         linewidth=2, markersize=8, label=dataset)
+                plt.plot(iterations, acc_history, marker='o', linestyle='-', linewidth=2, markersize=8, label=dataset)
 
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.xlabel('Iteration')
@@ -294,7 +369,20 @@ class PSO_MetricsVisualizer:
         plt.show()
 
     def create_comprehensive_report(self):
-        """Generate a comprehensive visual report of all available metrics"""
+        """
+        Generate a comprehensive visual report of all available metrics.
+
+        This method scans for all result directories, loads their metrics, and generates
+        a complete set of visualizations including:
+        - Accuracy comparison across datasets
+        - Architecture comparison plots
+        - PSO convergence plots
+        - Dataset-specific visualizations (accuracy history, confusion matrices)
+        - A summary markdown file with links to all visualizations
+
+        The visualizations are saved to the visualization directory specified during
+        initialization or to a timestamped directory if none was provided.
+        """
         result_dirs = self.find_all_result_directories()
 
         if not result_dirs:
@@ -330,11 +418,7 @@ class PSO_MetricsVisualizer:
             # Plot accuracy history if available
             for key, value in results.items():
                 if 'gBest_acc_history' in key and isinstance(value, np.ndarray):
-                    self.plot_metric_history(
-                        value,
-                        'accuracy',
-                        f'{dataset} - gBest Accuracy History'
-                    )
+                    self.plot_metric_history(value, 'accuracy', f'{dataset} - gBest Accuracy History')
 
                 # Plot confusion matrix if available
                 if 'all_comprehensive_metrics' in key:
@@ -343,11 +427,7 @@ class PSO_MetricsVisualizer:
                             cm = metrics['confusion_matrix']
                             # Create generic class names if not available
                             class_names = [str(i) for i in range(cm.shape[0])]
-                            self.plot_confusion_matrix(
-                                cm,
-                                class_names,
-                                f'{dataset} - {run_id} Confusion Matrix'
-                            )
+                            self.plot_confusion_matrix(cm, class_names, f'{dataset} - {run_id} Confusion Matrix')
 
             # Restore original visualization directory
             self.viz_dir = original_viz_dir
@@ -358,7 +438,18 @@ class PSO_MetricsVisualizer:
         print(f"\nComprehensive report generated in {self.viz_dir}")
 
     def create_summary_markdown(self, all_results):
-        """Create a summary markdown file with links to all visualizations"""
+        """
+        Create a summary markdown file with links to all visualizations.
+
+        This method generates a markdown file that summarizes the results of all experiments
+        and provides links to all generated visualizations. The summary includes:
+        - Overall performance statistics (accuracy, parameters, model size, inference time)
+        - Links to comparison visualizations
+        - Links to dataset-specific visualizations
+
+        Args:
+            all_results (dict): Dictionary mapping dataset/experiment names to their metrics
+        """
         summary = f"# PSO-CNN Results Summary\n\n"
         summary += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 

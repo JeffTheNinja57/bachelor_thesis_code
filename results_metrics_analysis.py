@@ -1,13 +1,41 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
-import re  # For parsing the text files
+import re
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+
+"""
+This module analyzes and visualizes metrics from late fusion experiments.
+It processes data from experiment result files, computes statistics, and generates
+comparison tables between different fusion approaches.
+"""
 
 # --- Helper function to parse all_metrics_summary.txt ---
 def parse_late_fusion_summary(file_path):
+    """
+    Parse metrics from a late fusion experiment summary file.
+
+    This function extracts accuracy and parameter counts for color and depth models,
+    as well as fusion accuracy. It also calculates efficiency metrics.
+
+    Args:
+        file_path (str): Path to the all_metrics_summary.txt file
+
+    Returns:
+        dict: Dictionary containing extracted metrics including:
+            - color_accuracy: Accuracy of the color stream model
+            - color_parameters: Parameter count of the color stream model
+            - depth_accuracy: Accuracy of the depth stream model
+            - depth_parameters: Parameter count of the depth stream model
+            - fusion_accuracy: Accuracy of the fused model
+            - total_parameters: Sum of color and depth model parameters
+            - fusion_efficiency: Fusion accuracy divided by total parameters
+            - color_efficiency: Color accuracy divided by color parameters
+            - depth_efficiency: Depth accuracy divided by depth parameters
+            - file_path: Path to the source file
+    """
     metrics = {}
     try:
         with open(file_path, 'r') as f:
@@ -66,30 +94,37 @@ def parse_late_fusion_summary(file_path):
 # --- Define your directories (ensure these paths are correct relative to script location) ---
 base_dir = "."
 
-unweighted_dirs_paths = [
-    "results/late_fusion_20250511_152953", "results/late_fusion_20250511_165953",
-    "results/late_fusion_20250512_143931", "results/late_fusion_20250512_150309",
-    "results/late_fusion_20250512_164107", "results/late_fusion_20250512_175256",
-    "results/late_fusion_20250512_175852", "results/late_fusion_20250512_183756",
-    "results/late_fusion_20250514_112025", "results/late_fusion_20250514_113312"
-]
+unweighted_dirs_paths = ["results/late_fusion_20250511_152953", "results/late_fusion_20250511_165953",
+    "results/late_fusion_20250512_143931", "results/late_fusion_20250512_150309", "results/late_fusion_20250512_164107",
+    "results/late_fusion_20250512_175256", "results/late_fusion_20250512_175852", "results/late_fusion_20250512_183756",
+    "results/late_fusion_20250514_112025", "results/late_fusion_20250514_113312"]
 
-weighted_dirs_paths = [
-    "results/late_fusion_20250512_185641_start_of_weighted_averaging", "results/late_fusion_20250512_190658",
-    "results/late_fusion_20250512_194222", "results/late_fusion_20250512_195308",
-    "results/late_fusion_20250512_200108", "results/late_fusion_20250513_181720",
-    "results/late_fusion_20250513_182755", "results/late_fusion_20250513_183244",
-    "results/late_fusion_20250513_183737", "results/late_fusion_20250513_202144",
-    "results/late_fusion_20250513_202723", "results/late_fusion_20250513_203333",
-    "results/late_fusion_20250513_204003", "results/late_fusion_20250513_204715",
-    "results/late_fusion_20250513_205310", "results/late_fusion_20250513_210122",
-    "results/late_fusion_20250513_210843", "results/late_fusion_20250513_211646",
-    "results/late_fusion_20250513_212457", "results/late_fusion_20250513_213242"
-]
+weighted_dirs_paths = ["results/late_fusion_20250512_185641_start_of_weighted_averaging",
+    "results/late_fusion_20250512_190658", "results/late_fusion_20250512_194222", "results/late_fusion_20250512_195308",
+    "results/late_fusion_20250512_200108", "results/late_fusion_20250513_181720", "results/late_fusion_20250513_182755",
+    "results/late_fusion_20250513_183244", "results/late_fusion_20250513_183737", "results/late_fusion_20250513_202144",
+    "results/late_fusion_20250513_202723", "results/late_fusion_20250513_203333", "results/late_fusion_20250513_204003",
+    "results/late_fusion_20250513_204715", "results/late_fusion_20250513_205310", "results/late_fusion_20250513_210122",
+    "results/late_fusion_20250513_210843", "results/late_fusion_20250513_211646", "results/late_fusion_20250513_212457",
+    "results/late_fusion_20250513_213242"]
 
 
 # --- Process Late Fusion Data ---
 def load_late_fusion_data(dir_paths, fusion_type_label):
+    """
+    Load and process metrics from multiple late fusion experiment directories.
+
+    This function iterates through a list of directory paths, parses the metrics
+    from each directory's summary file, and combines them into a DataFrame.
+
+    Args:
+        dir_paths (list): List of directory paths containing experiment results
+        fusion_type_label (str): Label to identify the fusion type (e.g., "Weighted Late Fusion")
+
+    Returns:
+        pandas.DataFrame: DataFrame containing metrics from all directories with an added
+                         'type' column indicating the fusion type
+    """
     data = []
     for dir_path in dir_paths:
         summary_file = os.path.join(base_dir, dir_path, "all_metrics_summary.txt")
@@ -121,8 +156,7 @@ else:
 print("\nLate Fusion Metrics Summary:")
 print(summary)
 
-early_fusion_runs_data = [
-    {'Run': 1, 'Accuracy': 0.9792, 'Parameters': 171560, 'Time': 192.32, 'type': 'Early Fusion'},
+early_fusion_runs_data = [{'Run': 1, 'Accuracy': 0.9792, 'Parameters': 171560, 'Time': 192.32, 'type': 'Early Fusion'},
     {'Run': 2, 'Accuracy': 0.9792, 'Parameters': 164839, 'Time': 234.36, 'type': 'Early Fusion'},
     {'Run': 3, 'Accuracy': 0.9729, 'Parameters': 821672, 'Time': 173.19, 'type': 'Early Fusion'},
     {'Run': 4, 'Accuracy': 0.9729, 'Parameters': 2579865, 'Time': 269.82, 'type': 'Early Fusion'},
@@ -141,27 +175,39 @@ early_fusion_runs_data = [
     {'Run': 17, 'Accuracy': 0.9688, 'Parameters': 3516040, 'Time': 340.57, 'type': 'Early Fusion'},
     {'Run': 18, 'Accuracy': 0.9750, 'Parameters': 520760, 'Time': 159.37, 'type': 'Early Fusion'},
     {'Run': 19, 'Accuracy': 0.9646, 'Parameters': 2324739, 'Time': 257.81, 'type': 'Early Fusion'},
-    {'Run': 20, 'Accuracy': 0.9646, 'Parameters': 774269, 'Time': 186.92, 'type': 'Early Fusion'}
-]
+    {'Run': 20, 'Accuracy': 0.9646, 'Parameters': 774269, 'Time': 186.92, 'type': 'Early Fusion'}]
 df_early_fusion = pd.DataFrame(early_fusion_runs_data)
 if not df_early_fusion.empty:
     df_early_fusion['Efficiency'] = df_early_fusion.apply(
-        lambda row: row['Accuracy'] / row['Parameters'] if row['Parameters'] > 0 else 0, axis=1
-    )
+        lambda row: row['Accuracy'] / row['Parameters'] if row['Parameters'] > 0 else 0, axis=1)
     df_early_fusion['type'] = 'Early Fusion'
 
 
 # --- Function to create summary table for a given DataFrame ---
 def create_summary_table(df, accuracy_col, params_col, efficiency_col, model_name_label):
+    """
+    Create a summary table highlighting key metrics from experiment results.
+
+    This function analyzes a DataFrame of experiment results and extracts the runs with
+    highest accuracy, best efficiency, and lowest parameters, along with average metrics.
+
+    Args:
+        df (pandas.DataFrame): DataFrame containing experiment results
+        accuracy_col (str): Name of the column containing accuracy values
+        params_col (str): Name of the column containing parameter count values
+        efficiency_col (str): Name of the column containing efficiency values
+        model_name_label (str): Label to identify the model type in messages
+
+    Returns:
+        pandas.DataFrame: Summary table with rows for highest accuracy, most efficient,
+                         lowest parameters, and average metrics
+    """
     if df is None or df.empty or not all(col in df.columns for col in [accuracy_col, params_col, efficiency_col]):
         print(f"Could not create summary table for {model_name_label}: DataFrame is empty or missing required columns.")
         # Return a DataFrame with N/A values if data is missing
-        return pd.DataFrame({
-            'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
-            'Accuracy': ['N/A'] * 4,
-            'Parameters': ['N/A'] * 4,
-            'Efficiency ($Acc/P$)': ['N/A'] * 4
-        })
+        return pd.DataFrame(
+            {'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
+                'Accuracy': ['N/A'] * 4, 'Parameters': ['N/A'] * 4, 'Efficiency ($Acc/P$)': ['N/A'] * 4})
 
     # Ensure numeric types for calculation
     df[accuracy_col] = pd.to_numeric(df[accuracy_col], errors='coerce')
@@ -171,27 +217,22 @@ def create_summary_table(df, accuracy_col, params_col, efficiency_col, model_nam
     df_cleaned = df.dropna(subset=[accuracy_col, params_col, efficiency_col])
     if df_cleaned.empty:
         print(f"Could not create summary table for {model_name_label} after cleaning NaNs.")
-        return pd.DataFrame({
-            'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
-            'Accuracy': ['N/A'] * 4,
-            'Parameters': ['N/A'] * 4,
-            'Efficiency ($Acc/P$)': ['N/A'] * 4
-        })
+        return pd.DataFrame(
+            {'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
+                'Accuracy': ['N/A'] * 4, 'Parameters': ['N/A'] * 4, 'Efficiency ($Acc/P$)': ['N/A'] * 4})
 
     highest_acc_run = df_cleaned.loc[df_cleaned[accuracy_col].idxmax()]
     most_efficient_run = df_cleaned.loc[df_cleaned[efficiency_col].idxmax()]
     lowest_params_run = df_cleaned.loc[df_cleaned[params_col].idxmin()]
     average_metrics = df_cleaned[[accuracy_col, params_col, efficiency_col]].mean()
 
-    summary_data = {
-        'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
+    summary_data = {'Run Type': ['Highest Accuracy', 'Most Efficient', 'Lowest Parameters', 'Average (all runs)'],
         'Accuracy': [highest_acc_run[accuracy_col], most_efficient_run[accuracy_col], lowest_params_run[accuracy_col],
                      average_metrics[accuracy_col]],
         'Parameters': [int(highest_acc_run[params_col]), int(most_efficient_run[params_col]),
                        int(lowest_params_run[params_col]), int(average_metrics[params_col])],
         'Efficiency ($Acc/P$)': [highest_acc_run[efficiency_col], most_efficient_run[efficiency_col],
-                                 lowest_params_run[efficiency_col], average_metrics[efficiency_col]]
-    }
+                                 lowest_params_run[efficiency_col], average_metrics[efficiency_col]]}
     return pd.DataFrame(summary_data)
 
 
@@ -233,7 +274,8 @@ print(weighted_late_fusion_summary_table.to_string(index=False, formatters={'Acc
                                                                             'Efficiency ($Acc/P$)': '{:.3e}'.format}))
 
 # Extract average metrics for weighted late fusion
-pso_weighted_late_avg_row = weighted_late_fusion_summary_table[weighted_late_fusion_summary_table['Run Type'] == 'Average (all runs)']
+pso_weighted_late_avg_row = weighted_late_fusion_summary_table[
+    weighted_late_fusion_summary_table['Run Type'] == 'Average (all runs)']
 if not pso_weighted_late_avg_row.empty:
     pso_weighted_late_avg_acc = pso_weighted_late_avg_row['Accuracy'].values[0]
     pso_weighted_late_avg_params = pso_weighted_late_avg_row['Parameters'].values[0]
@@ -290,40 +332,16 @@ else:  # Fallback
     pso_weighted_late_efficient_efficiency = pso_weighted_late_efficient_acc / pso_weighted_late_efficient_params if pso_weighted_late_efficient_params > 0 else 0
 
 main_comparison_data = {
-    'Model Type': [
-        'Baseline Early Fusion (Friezas et al. inferred)',
-        'Baseline Late Fusion (Friezas et al. inferred)',
-        'psoCNN Early Fusion (Most Efficient)',
-        'psoCNN Early Fusion (Average of All Runs)',
-        'psoCNN Weighted Late Fusion (Most Efficient)',
-        'psoCNN Weighted Late Fusion (Average of All Runs)'
+    'Model Type': ['Baseline Early Fusion (Friezas et al. inferred)', 'Baseline Late Fusion (Friezas et al. inferred)',
+        'psoCNN Early Fusion (Most Efficient)', 'psoCNN Early Fusion (Average of All Runs)',
+        'psoCNN Weighted Late Fusion (Most Efficient)', 'psoCNN Weighted Late Fusion (Average of All Runs)'
 
-    ],
-    'Accuracy': [
-        baseline_early_acc,
-        baseline_late_acc,
-        pso_early_efficient_acc,
-        pso_early_avg_acc,
-        pso_weighted_late_efficient_acc,
-        pso_weighted_late_avg_acc if 'pso_weighted_late_avg_acc' in locals() else 0.0
-    ],
-    'Parameters': [
-        baseline_early_params,
-        baseline_late_params,
-        pso_early_efficient_params,
-        pso_early_avg_params,
-        pso_weighted_late_efficient_params,
-        pso_weighted_late_avg_params
-    ],
-    'Efficiency ($Acc/P$)': [
-        baseline_early_efficiency,
-        baseline_late_efficiency,
-        pso_early_efficient_efficiency,
-        pso_early_avg_efficiency,
-        pso_weighted_late_efficient_efficiency,
-        pso_weighted_late_avg_efficiency
-    ]
-}
+    ], 'Accuracy': [baseline_early_acc, baseline_late_acc, pso_early_efficient_acc, pso_early_avg_acc,
+        pso_weighted_late_efficient_acc, pso_weighted_late_avg_acc if 'pso_weighted_late_avg_acc' in locals() else 0.0],
+    'Parameters': [baseline_early_params, baseline_late_params, pso_early_efficient_params, pso_early_avg_params,
+        pso_weighted_late_efficient_params, pso_weighted_late_avg_params],
+    'Efficiency ($Acc/P$)': [baseline_early_efficiency, baseline_late_efficiency, pso_early_efficient_efficiency,
+        pso_early_avg_efficiency, pso_weighted_late_efficient_efficiency, pso_weighted_late_avg_efficiency]}
 df_main_comparison = pd.DataFrame(main_comparison_data)
 print("\n--- Main Comparison Table (Baseline vs. Most Efficient psoCNN) ---")
 print(df_main_comparison.to_string(index=False, formatters={'Accuracy': '{:.4f}'.format, 'Parameters': '{:,}'.format,
@@ -342,10 +360,9 @@ if not df_late_fusion_all.empty and 'fusion_accuracy' in df_late_fusion_all.colu
 
     # Boxplot: Weighted vs. Unweighted Late Fusion Accuracy
     plt.figure(figsize=(7, 6))
-    sns.boxplot(x='type', y='fusion_accuracy', data=df_late_fusion_all, palette=['white', 'white'],
-                showmeans=True, meanline=True, meanprops={'color': 'red', 'ls': '-', 'lw': 2},
-                medianprops={'color': 'black'}, boxprops={'edgecolor': 'black'},
-                whiskerprops={'color': 'black'}, capprops={'color': 'black'})
+    sns.boxplot(x='type', y='fusion_accuracy', data=df_late_fusion_all, palette=['white', 'white'], showmeans=True,
+                meanline=True, meanprops={'color': 'red', 'ls': '-', 'lw': 2}, medianprops={'color': 'black'},
+                boxprops={'edgecolor': 'black'}, whiskerprops={'color': 'black'}, capprops={'color': 'black'})
     plt.xlabel('Late Fusion Type', fontsize=12)
     plt.ylabel('Fusion Accuracy', fontsize=12)
     plt.xticks(fontsize=10, rotation=0)
@@ -362,9 +379,8 @@ else:
 
 # Prepare early vs weighted fusion data for boxplots
 early_weighted_fusion_boxplot_data = None
-if not df_early_fusion.empty and not df_weighted_late.empty and \
-        'Accuracy' in df_early_fusion.columns and 'fusion_accuracy' in df_weighted_late.columns and \
-        not df_early_fusion['Accuracy'].isnull().all() and not df_weighted_late['fusion_accuracy'].isnull().all():
+if not df_early_fusion.empty and not df_weighted_late.empty and 'Accuracy' in df_early_fusion.columns and 'fusion_accuracy' in df_weighted_late.columns and not \
+df_early_fusion['Accuracy'].isnull().all() and not df_weighted_late['fusion_accuracy'].isnull().all():
 
     df_early_for_plot = df_early_fusion[['Accuracy', 'Parameters', 'type']].copy()
     df_weighted_late_for_plot = df_weighted_late[['fusion_accuracy', 'total_parameters', 'type']].copy()
@@ -377,8 +393,8 @@ if not df_early_fusion.empty and not df_weighted_late.empty and \
     plt.figure(figsize=(7, 6))
     sns.boxplot(x='type', y='Accuracy', data=early_weighted_fusion_boxplot_data, palette=['white', 'white'],
                 showmeans=True, meanline=True, meanprops={'color': 'red', 'ls': '-', 'lw': 2},
-                medianprops={'color': 'black'}, boxprops={'edgecolor': 'black'},
-                whiskerprops={'color': 'black'}, capprops={'color': 'black'})
+                medianprops={'color': 'black'}, boxprops={'edgecolor': 'black'}, whiskerprops={'color': 'black'},
+                capprops={'color': 'black'})
     plt.xlabel('psoCNN Fusion Strategy', fontsize=12)
     plt.ylabel('Accuracy', fontsize=12)
     plt.xticks(fontsize=10, rotation=0)
@@ -411,15 +427,10 @@ if late_fusion_boxplot_data is not None:
         print(f"\n{fusion_type}:")
         accuracy_values = filtered_data['fusion_accuracy'].sort_values(ascending=False).reset_index(drop=True)
         param_values = filtered_data['total_parameters'].values
-        fusion_data_table = pd.DataFrame({
-            'Run': range(1, len(accuracy_values) + 1),
-            'Accuracy': accuracy_values,
-            'Parameters': param_values
-        })
-        print(fusion_data_table.to_string(index=False, formatters={
-            'Accuracy': '{:.4f}'.format,
-            'Parameters': '{:,}'.format
-        }))
+        fusion_data_table = pd.DataFrame(
+            {'Run': range(1, len(accuracy_values) + 1), 'Accuracy': accuracy_values, 'Parameters': param_values})
+        print(fusion_data_table.to_string(index=False,
+                                          formatters={'Accuracy': '{:.4f}'.format, 'Parameters': '{:,}'.format}))
 
 # Table 2: Early vs. Weighted Late Fusion Data
 if early_weighted_fusion_boxplot_data is not None:
@@ -436,12 +447,7 @@ if early_weighted_fusion_boxplot_data is not None:
         print(f"\n{fusion_type}:")
         accuracy_values = filtered_data['Accuracy'].sort_values(ascending=False).reset_index(drop=True)
         param_values = filtered_data['Parameters'].values
-        fusion_data_table = pd.DataFrame({
-            'Run': range(1, len(accuracy_values) + 1),
-            'Accuracy': accuracy_values,
-            'Parameters': param_values
-        })
-        print(fusion_data_table.to_string(index=False, formatters={
-            'Accuracy': '{:.4f}'.format,
-            'Parameters': '{:,}'.format
-        }))
+        fusion_data_table = pd.DataFrame(
+            {'Run': range(1, len(accuracy_values) + 1), 'Accuracy': accuracy_values, 'Parameters': param_values})
+        print(fusion_data_table.to_string(index=False,
+                                          formatters={'Accuracy': '{:.4f}'.format, 'Parameters': '{:,}'.format}))
