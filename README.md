@@ -1,123 +1,72 @@
-# Multimodal PSO-CNN for iCub Action Recognition
+# Particle swarm optimization of deep neural networks architectures for image classification
 
-This repository contains the code for a multimodal Particle Swarm Optimization (PSO) based Convolutional Neural Network (CNN) architecture search for action recognition on the iCub dataset.
+**Authors:** Francisco Erivaldo Fernandes Junior and Gary G. Yen
 
-## Project Overview
+This code can be used to replicate the results from the following paper:
 
-This project implements a PSO-based approach to automatically search for optimal CNN architectures for action recognition tasks. The key features include:
+F. E. Fernandes Junior and G. G. Yen, “**Particle swarm optimization of deep neural networks architectures for image classification**,” Swarm and Evolutionary Computation, vol. 49, pp. 62–74, Sep. 2019.
 
-- **Multimodal Fusion**: Support for both early and late fusion strategies to combine color and depth information
-- **PSO-based Architecture Search**: Automatic search for optimal CNN architectures using Particle Swarm Optimization
-- **iCub Action Dataset**: Designed to work with the iCub humanoid robot action recognition dataset
-- **Flexible CNN Building**: Dynamic construction of CNN architectures based on PSO-generated encodings
-
-## Repository Structure
-
-- **data_preprocessing/**: Scripts for data preparation and dataset implementation
-  - `dataset.py`: Implementation of the ActionDataset class for data loading
-  - `concat_images.py`: Tools for concatenating images for early fusion
-  - `split_dataset.py`: Utilities for splitting datasets into train/val/test
-  - `preprocessing.py`: General preprocessing functions
-  - `check_dimensions.py`: Tools for checking image dimensions
-
-- **models/**: Neural network model implementations
-  - `cnn_architecture.py`: Dynamic CNN architecture builder
-  - `fusion_models.py`: Early and late fusion model implementations
-
-- **pso/**: Particle Swarm Optimization implementation
-  - `pso.py`: Main PSO algorithm implementation
-  - `pso_helpers.py`: Helper functions for PSO
-  - `particle.py`: Particle class definition
-  - `initialize_swarm.py`: Swarm initialization functions
-
-- **experiment/**: Experiment running code
-  - `run.py`: Main experiment runner
-
-- **utils/**: Utility functions
-  - `train.py`: Training and evaluation functions
-  - `helpers.py`: General helper functions
-
-- **docs/**: Documentation
-  - `tasks.md`: Current task list
-  - `updated_tasks.md`: Comprehensive improvement checklist
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- PyTorch 1.8+
-- CUDA-compatible GPU (recommended)
-
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/thesis_code.git
-   cd thesis_code
-   ```
-
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-### Running Experiments
-
-To run a PSO-CNN experiment:
-
-```bash
-python main.py --data_dir /path/to/dataset --fusion_type early --output_dir results
+```
+@article{fernandes_junior_particle_2019,
+	title = {Particle swarm optimization of deep neural networks architectures for image classification},
+	volume = {49},
+	issn = {22106502},
+	url = {https://linkinghub.elsevier.com/retrieve/pii/S2210650218309246},
+	doi = {10.1016/j.swevo.2019.05.010},
+	language = {en},
+	urldate = {2019-07-06},
+	journal = {Swarm and Evolutionary Computation},
+	author = {Fernandes Junior, Francisco Erivaldo and Yen, Gary G.},
+	month = sep,
+	year = {2019},
+	pages = {62--74},
+}
 ```
 
-Key parameters:
-- `--data_dir`: Path to the dataset directory
-- `--fusion_type`: Fusion strategy to use ('early' or 'late')
-- `--output_dir`: Directory to save results
-- `--swarm_size`: Number of particles in the swarm
-- `--max_iter`: Maximum number of PSO iterations
-- `--e_train`: Epochs for particle evaluation during PSO
-- `--e_test`: Epochs for final training of the best model
+**Note1:** If your system has all these packages installed, the code presented here should be able to run on Windows, macOS, or Linux.
 
-For a complete list of parameters, run:
-```bash
-python main.py --help
+## Installation using Anaconda Python
+
+Make sure you have Anaconda installed in your system. Then, run each command in a terminal window:
+
+```
+git clone https://github.com/feferna/psoCNN.git
+
+cd psoCNN
+
+conda env create -f psoCNN_env.yml
+
+conda activate psoCNN
 ```
 
-## Dataset
+**Note1:** If your system has all the packages listed in the file psoCNN_env.yml, the code presented here should be able to run on Windows, macOS, or Linux.
 
-The code is designed to work with the iCub action recognition dataset, which contains color and depth image pairs of various actions performed by the iCub humanoid robot. The dataset should be organized as follows:
+**Note2:** The file psoCNN_env.yml installs the Nvidia CUDA Toolkit and cuDNN library necessary to run the project in an Nvidia GPU.
 
-- For early fusion:
-  ```
-  data/
-  └── early/
-      ├── train/
-      ├── val/
-      └── test/
-  ```
+**Note3:** This code only works with Tensorflow 1.14. Do not try to use Tensorflow 2.X because you will find inconsistent results!
 
-- For late fusion:
-  ```
-  data/
-  ├── late_color/
-  │   ├── train/
-  │   ├── val/
-  │   └── test/
-  └── late_depth/
-      ├── train/
-      ├── val/
-      └── test/
-  ```
+## Usage
 
-## Future Improvements
+1. Download the following datasets and extract them to their corresponding folders inside the ```datasets``` folder:
+	1. Convex: 
+[http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip)
+	2. Rectangles: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip)
+	3. Rectangles with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip)
+	4. MNIST with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip)
+	5. MNIST with Random Noise as Background: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip)
+	6. MNIST with Rotated Digits: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip)
+	7. MNIST with Rotated Digits and Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip)
 
-See the [updated_tasks.md](docs/updated_tasks.md) file for a comprehensive list of planned improvements and features.
 
-## License
+2. Now, you can test the algorithm by running the ```main.py``` file:
 
-[Specify your license here]
+	```
+	export TF_FORCE_GPU_ALLOW_GROWTH=true
+	
+	python main.py
+	```
 
-## Acknowledgments
+**Note2:** The algorithm's parameters can modified in the file ```main.py```.
 
-- [Acknowledge any resources, papers, or libraries that were particularly helpful]
+**Note3:** due to our limited resources, we cannot provide any support to the code in this repository.
+
