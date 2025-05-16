@@ -1,10 +1,12 @@
-# Particle swarm optimization of deep neural networks architectures for image classification
+# Particle Swarm Optimization for Multimodal CNN: Early vs. Late Fusion Performance for Action Recognition.
 
-**Authors:** Francisco Erivaldo Fernandes Junior and Gary G. Yen
+**Extended by:** Mihnea Angheluță from the original work by Francisco Erivaldo Fernandes Junior and Gary G. Yen
 
-This code can be used to replicate the results from the following paper:
+## Overview
 
-F. E. Fernandes Junior and G. G. Yen, “**Particle swarm optimization of deep neural networks architectures for image classification**,” Swarm and Evolutionary Computation, vol. 49, pp. 62–74, Sep. 2019.
+This repository contains an extended implementation of the PSO-CNN algorithm, building upon the work presented in the following paper:
+
+F. E. Fernandes Junior and G. G. Yen, "**Particle swarm optimization of deep neural networks architectures for image classification**," Swarm and Evolutionary Computation, vol. 49, pp. 62–74, Sep. 2019.
 
 ```
 @article{fernandes_junior_particle_2019,
@@ -23,50 +25,101 @@ F. E. Fernandes Junior and G. G. Yen, “**Particle swarm optimization of deep n
 }
 ```
 
-**Note1:** If your system has all these packages installed, the code presented here should be able to run on Windows, macOS, or Linux.
+## Extensions to the Original Work
 
-## Installation using Anaconda Python
+We have extended the original PSO-CNN implementation with the following features:
 
-Make sure you have Anaconda installed in your system. Then, run each command in a terminal window:
+1. **Late Fusion Experiments**: We've added a new module (`late_fusion_experiment.py`) that implements late fusion of color and depth streams. This allows for multi-modal fusion where separate CNN architectures are optimized for each modality and then combined.
 
-```
-git clone https://github.com/feferna/psoCNN.git
+2. **Early Fusion Support**: The main script now supports early fusion experiments where multi-modal data is combined at the input level before being processed by a single CNN.
 
-cd psoCNN
+3. **TensorFlow 2.16.2 Compatibility**: The codebase has been updated to work with TensorFlow 2.16.2, incorporating all necessary API changes from the original TensorFlow 1.14 implementation. This was important for Metal Perfomance Shaders (MPS) compatibility on Apple Silicon devices, which were the hardware used for testing.
 
-conda env create -f psoCNN_env.yml
+## Installation
 
-conda activate psoCNN
-```
+This implementation uses pip for package management instead of the original Anaconda-based setup.
 
-**Note1:** If your system has all the packages listed in the file psoCNN_env.yml, the code presented here should be able to run on Windows, macOS, or Linux.
+### Prerequisites
 
-**Note2:** The file psoCNN_env.yml installs the Nvidia CUDA Toolkit and cuDNN library necessary to run the project in an Nvidia GPU.
+- Python 3.11
+- pip (Python package installer)
 
-**Note3:** This code only works with Tensorflow 1.14. Do not try to use Tensorflow 2.X because you will find inconsistent results!
+### Setup
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/JeffTheNinja57/bachelor_thesis_code.git
+   cd [repository-directory]
+   ```
+
+2. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+   **Note for Apple Silicon (M1/M2/M3) users**: If you're using an Apple Silicon Mac, uncomment the last two lines in the requirements.txt file to install the Apple-specific TensorFlow packages:
+   ```
+   # tensorflow-macos~=2.16.2
+   # tensorflow-metal~=1.2.0
+   ```
 
 ## Usage
 
-1. Download the following datasets and extract them to their corresponding folders inside the ```datasets``` folder:
-	1. Convex: 
-[http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip)
-	2. Rectangles: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip)
-	3. Rectangles with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip)
-	4. MNIST with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip)
-	5. MNIST with Random Noise as Background: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip)
-	6. MNIST with Rotated Digits: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip)
-	7. MNIST with Rotated Digits and Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip)
+### Dataset Preparation
 
+1. Download the following datasets and extract them to their corresponding folders inside the `datasets` folder:
+   1. Convex: [http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/convex.zip)
+   2. Rectangles: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles.zip)
+   3. Rectangles with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/rectangles_images.zip)
+   4. MNIST with Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_images.zip)
+   5. MNIST with Random Noise as Background: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_background_random.zip)
+   6. MNIST with Rotated Digits: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_new.zip)
+   7. MNIST with Rotated Digits and Background Images: [http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip](http://www.iro.umontreal.ca/~lisa/icml2007data/mnist_rotation_back_image_new.zip)
 
-2. Now, you can test the algorithm by running the ```main.py``` file:
+### Running Early Fusion Experiments
 
-	```
-	export TF_FORCE_GPU_ALLOW_GROWTH=true
-	
-	python main.py
-	```
+To run an early fusion experiment:
 
-**Note2:** The algorithm's parameters can modified in the file ```main.py```.
+```
+# Run the main script
+python main.py
+```
 
-**Note3:** due to our limited resources, we cannot provide any support to the code in this repository.
+You can modify the experiment parameters in the `main.py` file, including:
+- Dataset selection
+- Number of runs and iterations
+- Population size
+- Batch size and epochs
+- Network architecture constraints
+- PSO parameters
 
+### Running Late Fusion Experiments
+
+To run a late fusion experiment, which trains separate models for color and depth streams and then combines them:
+
+```
+# Run the late fusion experiment script
+python late_fusion_experiment.py"
+```
+
+You can also modify the `LateFusionPSOCNN` class with your desired parameters in the `late_fusion_experiment.py` file.
+
+## Results Analysis
+
+After running experiments, you can analyze the results using the provided visualization tools:
+
+```
+python results_metrics_analysis.py"
+```
+
+This will generate a comprehensive report with visualizations of model performance, architecture comparisons, and boxplots of the results.
+
+## Notes
+
+- Unlike the original implementation which only worked with TensorFlow 1.14, this version is compatible with TensorFlow 2.16.2.
+- The code has been tested on Apple Silicon (with the appropriate TensorFlow packages).
+- You can adjust the hyperparameters in the respective Python files to customize the experiments.
+
+## Acknowledgments
+
+This work builds upon the original PSO-CNN implementation by Fernandes Junior and Yen. We extend our gratitude to the original authors for their foundational work in this area.
